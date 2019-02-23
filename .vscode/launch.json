@@ -1,0 +1,11 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Mercatino",
+            "request": "launch",
+            "mainClass": "io.github.unixmib.mercatino.Main",
+            "projectName": "mercatino"
+        }
+    ]
+}
