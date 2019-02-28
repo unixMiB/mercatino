@@ -44,31 +44,35 @@ public class Advertisement {
         return owner;
     }
 
-    public void setOwner(User owner) {
+    public Advertisement setOwner(User owner) {
         this.owner = owner;
+        return this;
     }
 
     public List<PhotoSize> getPhotoSizes() {
         return photoSizes;
     }
 
-    public void setPhotoSizes(List<PhotoSize> photoSizes) {
+    public Advertisement setPhotoSizes(List<PhotoSize> photoSizes) {
         this.photoSizes = photoSizes;
+        return this;
     }
 
     public String getTitle() {
         return title;
     }
 
-    public void setTitle(String title) {
+    public Advertisement setTitle(String title) {
         this.title = title;
+        return this;
     }
 
     public String getDescription() {
         return description;
     }
 
-    public void setDescription(String description) {
+    public Advertisement setDescription(String description) {
         this.description = description;
+        return this;
     }
 }

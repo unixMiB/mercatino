@@ -126,7 +126,7 @@ public class Main {
                                         .setCaption(advertisement.getTitle() + "\n" + advertisement.getDescription())
                                         .setReplyMarkup(new InlineKeyboardBuilder().addRow()
                                                 .buildButton("Invia richiesta")
-                                                .setCallbackData("contact:" + callbackQuery.getFrom().getId())
+                                                .setCallbackData("contact:" + advertisement.getOwner().getId())
                                                 .build()
                                                 .build().addRow().buildButton("Gruppo unixMiB")
                                                 .setUrl("https://t.me/unixmib").build().build().build())
