@@ -98,26 +98,12 @@ public class Main {
                     var request = s.split(":");
                     switch (request[0]) {
                         case "delmsg": {
-                            boolean found;
                             try {
                                 tg.deleteMessage()
                                         .setMessageID(Integer.valueOf(request[1]))
                                         .setChatID(DataStore.getBoard())
                                         .send().get();
-                            } catch (Exception e) {
-                                found = false;
-                            }
-                            if (true) {
-                                callbackQuery.getMessage().ifPresent(message -> {
-                                    tg.deleteMessage()
-                                            .setMessage(message)
-                                            .send();
-                                    tg.sendMessage()
-                                            .setChatID(message.getChat())
-                                            .setText("Annuncio rimosso")
-                                            .send();
-                                });
-                            } else {
+                            } catch (TelegramException e) {
                                 callbackQuery.getMessage().ifPresent(message -> {
                                     tg.deleteMessage()
                                             .setMessage(message)
