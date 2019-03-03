@@ -97,6 +97,45 @@ public class Main {
                 .ifPresent(s -> {
                     var request = s.split(":");
                     switch (request[0]) {
+                        case "delmsg": {
+                            boolean found;
+                            try {
+                                tg.deleteMessage()
+                                        .setMessageID(Integer.valueOf(request[1]))
+                                        .setChatID(DataStore.getBoard())
+                                        .send().get();
+                            } catch (Exception e) {
+                                found = false;
+                            }
+                            if (true) {
+                                callbackQuery.getMessage().ifPresent(message -> {
+                                    tg.deleteMessage()
+                                            .setMessage(message)
+                                            .send();
+                                    tg.sendMessage()
+                                            .setChatID(message.getChat())
+                                            .setText("Annuncio rimosso")
+                                            .send();
+                                });
+                            } else {
+                                callbackQuery.getMessage().ifPresent(message -> {
+                                    tg.deleteMessage()
+                                            .setMessage(message)
+                                            .send();
+                                    tg.sendMessage()
+                                            .setChatID(message.getChat())
+                                            .setText("Annuncio non trovato, contatta gli" +
+                                                    " amministratori sul gruppo @unixmib")
+                                            .setReplyMarkup(new InlineKeyboardBuilder()
+                                                    .addRow()
+                                                    .buildButton("Gruppo unixMiB")
+                                                    .setUrl("https://t.me/unixmib")
+                                                    .build().build().build())
+                                            .send();
+                                });
+                            }
+                        }
+                        break;
                         case "new_advertisement":
                             tg.answerCallbackQuery()
                                     .setCallbackQueryID(callbackQuery)
@@ -121,7 +160,7 @@ public class Main {
                                 return null;
                             });
                             DataStore.getAdvertisementMap().computeIfPresent(request[1], (s1, advertisement) -> {
-                                tg.sendPhoto()
+                                var msg = tg.sendPhoto()
                                         .setChatID(DataStore.getBoard())
                                         .setPhoto(advertisement.getPhotoSizes().get(0).getFileID())
                                         .setCaption(advertisement.getTitle() + "\n" + advertisement.getDescription())
@@ -132,6 +171,14 @@ public class Main {
                                                 .build().addRow().buildButton("Gruppo unixMiB")
                                                 .setUrl("https://t.me/unixmib").build().build().build())
                                         .send();
+                                msg.ifPresent(message -> tg.sendMessage().setText("Il tuo annuncio \"" + advertisement.getTitle()
+                                        + "\" è stato pubblicato")
+                                        .setChatID(Long.valueOf(advertisement.getOwner().getId()))
+                                        .setReplyMarkup(new InlineKeyboardBuilder().addRow()
+                                                .buildButton("Cancella annuncio")
+                                                .setCallbackData("delmsg:" + message.getMessageID())
+                                                .build()
+                                                .build().build()).send());
                                 callbackQuery.getMessage().ifPresent(message -> tg.deleteMessage()
                                         .setChatID(message.getChat())
                                         .setMessageID(message)
