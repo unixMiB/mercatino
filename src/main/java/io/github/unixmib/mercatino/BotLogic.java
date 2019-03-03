@@ -64,8 +64,9 @@ public class BotLogic {
         });
 
         statesManager.newState("new_advertisement", message -> {
-            message.getFrom()
-                    .ifPresent(user -> statesManager.store.put("advertisement", new Advertisement(user)));
+            message.getChat().getPrivateChat()
+                    .ifPresent(privateChat -> statesManager.store
+                            .put("advertisement", new Advertisement(privateChat.toUser())));
             telegramBot.sendMessage()
                     .setChatID(message.getChat())
                     .setText("Inviami il titolo della tua inserzione")

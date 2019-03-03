@@ -169,7 +169,7 @@
         <dependency>
             <groupId>com.xspacesoft.kowalski7cc</groupId>
             <artifactId>BotRevolution</artifactId>
-            <version>5.0a-Snapshot</version>
+            <version>5.0b-Snapshot</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>

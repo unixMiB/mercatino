@@ -22,6 +22,7 @@ import com.kowalski7cc.botrevolution.types.Message;
 import com.kowalski7cc.botrevolution.types.Update;
 import com.kowalski7cc.botrevolution.types.chat.Chat;
 import com.kowalski7cc.botrevolution.types.repymarkups.inlinekeyboard.InlineKeyboardBuilder;
+import com.kowalski7cc.botrevolution.utils.decoder.TelegramException;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -135,11 +136,17 @@ public class Main {
                                         .setChatID(message.getChat())
                                         .setMessageID(message)
                                         .send());
-                                tg.answerCallbackQuery()
-                                        .setCallbackQueryID(callbackQuery)
-                                        .setText("Annuncio pubblicato")
-                                        .setCacheTime(1)
-                                        .send();
+                                try {
+                                    tg.answerCallbackQuery()
+                                            .setCallbackQueryID(callbackQuery)
+                                            .setText("Annuncio pubblicato")
+                                            .setCacheTime(1)
+                                            .send();
+                                } catch (TelegramException e) {
+                                    // Query timed out
+                                    System.out.println("QueryManager: " + e.toString() + ", Query ID: " +
+                                            callbackQuery.getId());
+                                }
                                 return null;
                             });
                             break;
