@@ -20,75 +20,116 @@ package io.github.unixmib.mercatino;
 import com.kowalski7cc.botrevolution.TelegramBot;
 import com.kowalski7cc.botrevolution.types.Message;
 import com.kowalski7cc.botrevolution.types.chat.Chat;
+import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class DataStore {
 
     private static Map<Chat, StatesManager<Message>> chats;
-    private static List<Long> admins;
+    private static List<Integer> admins;
     private static Map<String, Advertisement> advertisementMap;
+    private static Optional<String> adminsGroup;
     private static String board;
     public static TelegramBot telegramBot;
+    public final static String CONFIG_FILE_NAME = "config.json";
+    public static CommandManager commandManager;
 
-    public static void loadDataStore() {
+
+    /**
+     * Main method called fot initializing data store
+     */
+    public static void initialize() {
         try {
-            var options = new JSONObject(Files.readAllLines(Paths.get("config.json")).stream().collect(Collectors.joining()));
-            telegramBot = new TelegramBot(options.getString("token"));
-            setBoard(options.getString("board"));
-            setAdmins(options.getJSONArray("admins")
-                    .toList()
-                    .parallelStream()
-                    .map(o -> Long.parseLong(o.toString()))
-                    .collect(Collectors.toList()));
-        } catch (Exception e) {
-            telegramBot = new TelegramBot(System.getenv("MERCATINO_TELEGRAM_TOKEN"));
-            setBoard(System.getenv("MERCATINO_BOARD_ID"));
-            setAdmins(Optional.ofNullable(System.getenv("MERCATINO_ADMINS_IDS"))
-                    .map(s -> List.of(s.split(":")).parallelStream().map(Long::parseLong).collect(Collectors.toList()))
-                    .orElse(List.of()));
+            loadConfigFromFile(new File(CONFIG_FILE_NAME));
+        } catch (IOException e) {
+            loadConfigFromEnvironment();
         }
-
         advertisementMap = new HashMap<>();
         chats = new HashMap<>();
+        commandManager = new CommandManager().loadCommandsFromKeys(Command.values());
     }
+
+    /**
+     * Method used to loadFSM bot configuration from provided JSON file
+     * @param configFile File as configuration input
+     * @throws IOException when configFile is not found or unable to read
+     * @throws JSONException when configFile is malformed
+     */
+    private static void loadConfigFromFile(File configFile) throws IOException, JSONException {
+        var data = new JSONObject(Files.readAllLines(configFile.toPath()).stream()
+                .collect(Collectors.joining()));
+        telegramBot = new TelegramBot(data.getString(ParameterKey.TOKEN.getJson()));
+        board = data.getString(ParameterKey.BOARD.getJson());
+        adminsGroup = Optional.ofNullable(data.optString(ParameterKey.ADMINS_GROUP.getJson()));
+        // Admins can be not provided, they can self promote if they belong to admin group
+        admins = Optional.ofNullable(data.optJSONArray(ParameterKey.ADMINS.getJson()))
+                .stream()
+                .map(JSONArray::toList)
+                .map(o -> Integer.parseInt(o.toString()))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     *
+     * @throws NullPointerException when a required env variable is not found
+     */
+    private static void loadConfigFromEnvironment() throws NullPointerException {
+        telegramBot = new TelegramBot(Objects.requireNonNull(System.getenv(ParameterKey.TOKEN.getEnv()),
+                "Token not provided"));
+        setBoardID(Objects.requireNonNull(System.getenv(ParameterKey.BOARD.getEnv()),
+                "Board ID not provided"));
+        // Admins can be not provided, they can self promote if they belong to admin group
+        admins = Optional.ofNullable(System.getenv(ParameterKey.ADMINS.getEnv()))
+                .map(s -> List.of(s.split(":"))
+                        .stream()
+                        .map(Integer::parseInt)
+                        .collect(Collectors.toList()))
+                .orElse(List.of());
+        adminsGroup = Optional.ofNullable(System.getenv(ParameterKey.ADMINS_GROUP.getEnv()));
+    }
+
+    /*
+    private static void loadConfigFromArument(Optional<String> argument) throws NullPointerException {
+        argument.map(s -> s.split(" ")).orElseThrow(() -> new NullPointerException());
+    }
+    */
 
     public static Map<Chat, StatesManager<Message>> getChats() {
         return chats;
     }
 
-    public static void setChats(Map<Chat, StatesManager<Message>> chats) {
-        DataStore.chats = chats;
-    }
-
-    public static List<Long> getAdmins() {
+    public static List<Integer> getAdmins() {
         return admins;
     }
 
-    public static void setAdmins(List<Long> admins) {
-        DataStore.admins = admins;
+    public static void addAdmin(Integer id) {
+        admins.add(id);
     }
 
-    public static Map<String, Advertisement> getAdvertisementMap() {
+    public static void removeAdmin(Integer id) {
+        admins.remove(id);
+    }
+
+    public static Optional<String> getAdminsGroup() {
+        return adminsGroup;
+    }
+
+    public static Map<String, Advertisement> getAdvertisements() {
         return advertisementMap;
     }
 
-    public static void setAdvertisementMap(Map<String, Advertisement> advertisementMap) {
-        DataStore.advertisementMap = advertisementMap;
-    }
-
-    public static String getBoard() {
+    public static String getBoardID() {
         return board;
     }
 
-    public static void setBoard(String board) {
+    public static void setBoardID(String board) {
         DataStore.board = board;
     }
 }

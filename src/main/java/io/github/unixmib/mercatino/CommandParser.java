@@ -26,6 +26,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 
+// TODO This class should probably moved to BotRevolution Library
 public class CommandParser {
 
     private Message message;
