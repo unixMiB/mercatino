@@ -31,9 +31,10 @@ public class Main {
 
     public static void main(String[] args) throws InterruptedException {
         printLicense();
-        DataStore.loadDataStore();
+        DataStore.initialize();
         DataStore.telegramBot.getReceiver().startPolling();
-        DataStore.telegramBot.getMe().ifPresentOrElse(user -> System.out.println("Connected as " + user.getFirstName()),
+        DataStore.telegramBot.getMe()
+                .ifPresentOrElse(user -> System.out.println("Connected as " + user.getFirstName() + " https://t.me/" + user.getUsername().orElse("")),
                 () -> System.exit(1));
         while (DataStore.telegramBot.getReceiver().isPolling()) {
             synchronized (DataStore.telegramBot.getReceiver().getUpdates()) {
@@ -41,12 +42,16 @@ public class Main {
             }
 
             while (!DataStore.telegramBot.getUpdates().isEmpty())
-                CompletableFuture.runAsync(() -> apply(DataStore.telegramBot.getUpdates().poll(), DataStore.telegramBot)).join();
+                CompletableFuture.runAsync(() -> apply(DataStore.telegramBot.getUpdates()
+                        .poll(), DataStore.telegramBot))
+                        .join();
         }
     }
 
     private static void printLicense() {
+        var version = System.getProperties().getProperty("mercatino.version");
         System.out.println("MercatinoBot - unixMiB https://unixmib.github.io/\n" +
+                "Build " + (version==null?"developement":version) + "\n" +
                 "Copyright (C) 2019  Kowalski7cc\n" +
                 "\n" +
                 "This program is free software: you can redistribute it and/or modify\n" +
@@ -70,38 +75,23 @@ public class Main {
         // handle incoming messages
         update.getMessage().ifPresent(message -> message.getChat()
                 .getPrivateChat()
-                .ifPresent(privateChat -> new CommandParser(message).ifPresentOrElse((command, parameters) -> {
-                    switch (command) {
-                        case "start":
-                            getState(privateChat, tg).reset().apply(message);
-                            break;
-                        case "vendi":
-                            getState(privateChat, tg).reset().jumpToState("new_advertisement").apply(message);
-                            break;
-                        case "help":
-                            getState(privateChat, tg).reset().jumpToState("show_hint").apply(message);
-                            break;
-                        case "bacheca":
-                            getState(privateChat, tg).reset().jumpToState("bacheca").apply(message);
-                            break;
-                        case "annulla":
-                            getState(privateChat, tg).reset().jumpToState("abort").apply(message);
-                            break;
-                        default:
-                            tg.sendMessage().setChatID(message.getChat()).setText("Comando non valido").send();
-                            break;
-                    }
-                }, () -> getState(privateChat, tg).apply(message))));
+                .ifPresent(privateChat -> DataStore.commandManager
+                        // TODO Make CommandManager part of BotRevolution Library
+                        .runCommandOrElse(getState(privateChat, tg), message,
+                                () -> getState(privateChat, tg).apply(message))));
 
+
+        // Clean up this garbage
         update.getCallbackQuery().ifPresent(callbackQuery -> callbackQuery.getData()
                 .ifPresent(s -> {
                     var request = s.split(":");
                     switch (request[0]) {
                         case "delmsg": {
+                            // Allow users to delete published post
                             try {
                                 tg.deleteMessage()
                                         .setMessageID(Integer.valueOf(request[1]))
-                                        .setChatID(DataStore.getBoard())
+                                        .setChatID(DataStore.getBoardID())
                                         .send().get();
                             } catch (TelegramException e) {
                                 callbackQuery.getMessage().ifPresent(message -> {
@@ -122,6 +112,8 @@ public class Main {
                             }
                         }
                         break;
+
+
                         case "new_advertisement":
                             tg.answerCallbackQuery()
                                     .setCallbackQueryID(callbackQuery)
@@ -131,8 +123,11 @@ public class Main {
                                     jumpToState("new_advertisement")
                                     .apply(message));
                             break;
+
+
                         case "publish":
-                            DataStore.getAdvertisementMap().computeIfAbsent(request[1], s1 -> {
+                            // Send notification to moderator if post not found
+                            DataStore.getAdvertisements().computeIfAbsent(request[1], s1 -> {
                                 tg.answerCallbackQuery()
                                         .setCallbackQueryID(callbackQuery)
                                         .setText("Annuncio non trovato, probabilmente è già stata effettuata la pubblicazione")
@@ -145,30 +140,57 @@ public class Main {
                                                 .send());
                                 return null;
                             });
-                            DataStore.getAdvertisementMap().computeIfPresent(request[1], (s1, advertisement) -> {
+
+                            // Publish post on channel, get message id, send confirmation with callback id
+                            DataStore.getAdvertisements().computeIfPresent(request[1], (s1, advertisement) -> {
                                 var msg = tg.sendPhoto()
-                                        .setChatID(DataStore.getBoard())
+                                        .setChatID(DataStore.getBoardID())
                                         .setPhoto(advertisement.getPhotoSizes().get(0).getFileID())
                                         .setCaption(advertisement.getTitle() + "\n" + advertisement.getDescription())
                                         .setReplyMarkup(new InlineKeyboardBuilder().addRow()
                                                 .buildButton("Invia richiesta")
-                                                .setCallbackData("contact:" + advertisement.getOwner().getId())
+                                                // TEST: does int client work as id?
+                                                .setCallbackData("contact:" + advertisement.getPublisherOverride()
+                                                        .orElse(advertisement.getOwner().getId()))
                                                 .build()
                                                 .build().addRow().buildButton("Gruppo unixMiB")
                                                 .setUrl("https://t.me/unixmib").build().build().build())
                                         .send();
-                                msg.ifPresent(message -> tg.sendMessage().setText("Il tuo annuncio \"" + advertisement.getTitle()
-                                        + "\" è stato pubblicato")
-                                        .setChatID(Long.valueOf(advertisement.getOwner().getId()))
-                                        .setReplyMarkup(new InlineKeyboardBuilder().addRow()
-                                                .buildButton("Cancella annuncio")
-                                                .setCallbackData("delmsg:" + message.getMessageID())
-                                                .build()
-                                                .build().build()).send());
+
+                                // Send confirmation to user
+                                try {
+                                    msg.ifPresent(message -> {
+                                        tg.sendMessage()
+                                                .setText("Il tuo annuncio \"" + advertisement.getTitle()
+                                                        + "\" è stato pubblicato")
+                                                .setChatID(advertisement.getPublisherOverride()
+                                                        .orElse(advertisement.getOwner().getId()).longValue())
+                                                .setReplyMarkup(new InlineKeyboardBuilder().addRow()
+                                                        .buildButton("Cancella annuncio")
+                                                        .setCallbackData("delmsg:" + message.getMessageID())
+                                                        .build()
+                                                        .build().build()).send();
+
+                                        advertisement.getPublisherOverride().ifPresent(integer -> callbackQuery.getMessage()
+                                                .ifPresent(modMessage -> tg.sendMessage()
+                                                        .setText("Messaggio di conferma inviato in privato all'utente in override")
+                                                        .setChatID(modMessage.getChat())
+                                                        .send()));
+                                    });
+                                } catch (TelegramException e) {
+                                    callbackQuery.getMessage().ifPresent(message -> tg.sendMessage()
+                                            .setText("Errore nell'invio del messaggio di conferma all'utente in override")
+                                            .setChatID(message.getChat())
+                                            .send());
+                                }
+
+                                // Delete moderation message
                                 callbackQuery.getMessage().ifPresent(message -> tg.deleteMessage()
                                         .setChatID(message.getChat())
                                         .setMessageID(message)
                                         .send());
+
+                                // Answer to callback
                                 try {
                                     tg.answerCallbackQuery()
                                             .setCallbackQueryID(callbackQuery)
@@ -177,14 +199,16 @@ public class Main {
                                             .send();
                                 } catch (TelegramException e) {
                                     // Query timed out
-                                    System.out.println("QueryManager: " + e.toString() + ", Query ID: " +
+                                    System.out.println("TIMEOUT QueryManager: " + e.toString() + ", Query ID: " +
                                             callbackQuery.getId());
                                 }
                                 return null;
                             });
                             break;
+
+
                         case "delete":
-                            DataStore.getAdvertisementMap().computeIfAbsent(request[1], s1 -> {
+                            DataStore.getAdvertisements().computeIfAbsent(request[1], s1 -> {
                                 try {
                                     tg.answerCallbackQuery()
                                             .setCallbackQueryID(callbackQuery)
@@ -200,7 +224,7 @@ public class Main {
                                     return null;
                                 }
                             });
-                            DataStore.getAdvertisementMap().computeIfPresent(request[1], (s1, advertisement) -> {
+                            DataStore.getAdvertisements().computeIfPresent(request[1], (s1, advertisement) -> {
                                 tg.answerCallbackQuery()
                                         .setCallbackQueryID(callbackQuery)
                                         .setText("Annuncio cancellato")
@@ -213,9 +237,13 @@ public class Main {
                                 return null;
                             });
                             break;
+
+
                         case "contact":
+                            // Send a message to post publisher, if user doesn't have an username, fail with notification.
                             callbackQuery.getFrom().getUsername().ifPresentOrElse(s1 -> {
                                 try {
+                                    // Send a message to publisher with user ID in the button
                                     tg.sendMessage()
                                             .setChatID(request[1])
                                             .setText("Ciao, hai avuto una richiesta da " + callbackQuery.getFrom()
@@ -226,6 +254,8 @@ public class Main {
                                                     .build()
                                                     .build().build())
                                             .send();
+
+                                    // Notify user on successful poke
                                     tg.answerCallbackQuery()
                                             .setCallbackQueryID(callbackQuery)
                                             .setText("Richiesta inviata!")
@@ -233,6 +263,7 @@ public class Main {
                                             .setCacheTime(10)
                                             .send();
                                 } catch (Exception e) {
+                                    // If user blocked the bot, notify user
                                     try {
                                         tg.answerCallbackQuery()
                                                 .setCallbackQueryID(callbackQuery)
@@ -253,6 +284,8 @@ public class Main {
                                     .send());
 
                             break;
+
+
                         default:
                             tg.answerCallbackQuery()
                                     .setCallbackQueryID(callbackQuery)
@@ -267,7 +300,7 @@ public class Main {
 
     private static StatesManager<Message> getState(Chat chat, TelegramBot telegramBot) {
         return DataStore.getChats().compute(chat, (chat1, statesManager) -> Optional.ofNullable(statesManager)
-                .orElse(BotLogic.load(new StatesManager<>(), telegramBot)));
+                .orElse(BotLogic.loadFSM(new StatesManager<>(), telegramBot)));
     }
 
 }

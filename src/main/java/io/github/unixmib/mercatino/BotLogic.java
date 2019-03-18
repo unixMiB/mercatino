@@ -1,16 +1,16 @@
 /**
  * Copyright (C) 2019 Kowalski7cc
- * 
+ * <p>
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
  * published by the Free Software Foundation, either version 3 of the
  * License, or (at your option) any later version.
- * 
+ * <p>
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
- * 
+ * <p>
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -23,12 +23,14 @@ import com.kowalski7cc.botrevolution.types.repymarkups.inlinekeyboard.InlineKeyb
 import com.kowalski7cc.botrevolution.types.repymarkups.replykeyboards.ReplyKeyboardBuilder;
 import com.kowalski7cc.botrevolution.types.repymarkups.replykeyboards.ReplyKeyboardRemove;
 
-import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
+
+import static java.util.Optional.*;
 
 public class BotLogic {
 
-    public static StatesManager<Message> load(StatesManager<Message> statesManager, TelegramBot telegramBot) {
+    public static StatesManager<Message> loadFSM(StatesManager<Message> statesManager, TelegramBot telegramBot) {
 
         statesManager.newState("start", o -> {
             telegramBot.sendMessage().setChatID(o.getChat()).setText("Ciao" + o.getFrom()
@@ -67,6 +69,18 @@ public class BotLogic {
             message.getChat().getPrivateChat()
                     .ifPresent(privateChat -> statesManager.store
                             .put("advertisement", new Advertisement(privateChat.toUser())));
+
+            // Check if message contains publish id override command and user is admin, then set it if true
+            message.getFrom().ifPresent(user -> DataStore.getAdmins()
+                    .stream()
+                    .filter(user.getId()::equals)
+                    .findFirst()
+                    .ifPresentOrElse(integer -> new CommandParser(message).getParameters().ifPresent(s ->
+                            {
+                                getAdvertisementData(statesManager).setPublisherOverride(of(Integer.parseInt(s)));
+                                System.out.println("OVERRIDE MODE: " + user.getId() + " -> " + s);
+                            }), () -> getAdvertisementData(statesManager).setPublisherOverride(empty())));
+
             telegramBot.sendMessage()
                     .setChatID(message.getChat())
                     .setText("Inviami il titolo della tua inserzione")
@@ -144,16 +158,16 @@ public class BotLogic {
 
 
         statesManager.newState("read_publish", message -> message.getText()
-                .map(s -> Optional.of(s)
+                .map(s -> of(s)
                         .filter(s1 -> s1.equals("Pubblica"))
                         .map(s1 -> {
                             var adv = getAdvertisementData(statesManager);
                             String uuid = UUID.randomUUID().toString();
-                            DataStore.getAdvertisementMap().put(uuid, adv);
-                            DataStore.getAdmins().forEach(aLong -> {
+                            DataStore.getAdvertisements().put(uuid, adv);
+                            DataStore.getAdmins().forEach(id -> {
                                 try {
                                     telegramBot.sendPhoto()
-                                            .setChatID(aLong)
+                                            .setChatID(id.longValue())
                                             .setCaption(adv.getTitle() + "\n" + adv.getDescription())
                                             .setPhoto(adv.getPhotoSizes().get(0).getFileID())
                                             .setReplyMarkup(new InlineKeyboardBuilder().addRow()
@@ -161,12 +175,12 @@ public class BotLogic {
                                                     .setCallbackData("publish:" + uuid)
                                                     .build()
                                                     .buildButton("Cancella")
-                                                    .setCallbackData("delete:"+uuid)
+                                                    .setCallbackData("delete:" + uuid)
                                                     .build()
                                                     .build().build())
                                             .send();
                                 } catch (Exception e) {
-                                    System.out.println("Inpossibile contattare l'admin " + aLong);
+                                    System.out.println("MODERATION ERROR: Impossibile contattare l'admin " + id);
                                 }
                             });
 
@@ -174,10 +188,10 @@ public class BotLogic {
                                     .setChatID(message.getChat())
                                     .setText("Ottimo. Il tuo annuncio sarà presto pubblicato")
                                     .setReplyMarkup(new ReplyKeyboardRemove())
-                                    .send();    
+                                    .send();
                             return "show_hint";
                         })
-                        .or(() -> Optional.of(s).filter(s1 -> s1.equals("Annulla")).map(s1 -> {
+                        .or(() -> of(s).filter(s1 -> s1.equals("Annulla")).map(s1 -> {
                             telegramBot.sendMessage()
                                     .setChatID(message.getChat())
                                     .setText("Pubblicazione annullata")
@@ -209,6 +223,39 @@ public class BotLogic {
             telegramBot.sendMessage().setText("Azione annullata")
                     .setChatID(message.getChat())
                     .setReplyMarkup(new ReplyKeyboardRemove())
+                    .send();
+            return "show_hint";
+        });
+
+        statesManager.newState("selfpromote", message -> {
+            Consumer<String> msg = text -> telegramBot.sendMessage()
+                    .setChatID(message.getChat())
+                    .setText(text)
+                    .send();
+            Runnable error = () -> msg.accept("Errore durante l'elaborazione");
+
+            DataStore.getAdminsGroup().ifPresentOrElse(s -> message.getFrom()
+                    .ifPresentOrElse(user -> telegramBot.getChatMember()
+                            .setChatID(s)
+                            .setUserID(user)
+                            .send()
+                            .ifPresentOrElse(chatMember -> {
+                                if (chatMember.getStatus().equals("left")) {
+                                    msg.accept("Non hai i privilegi per eseguire questa operazione. Questo incidente verrà segnalato.");
+                                    System.out.println("SELFPROMOTE FAILED: " + message.getFrom());
+                                } else {
+                                    DataStore.addAdmin(user.getId());
+                                    msg.accept("Privilegi elevati con successo");
+                                    System.out.println("SELFPROMOTE SUCCEDED: " + message.getFrom());
+                                }
+                            }, () -> error.run()), () -> error.run()), () -> error.run());
+            return "show_hint";
+        });
+
+        statesManager.newState("unknownCommand", message -> {
+            telegramBot.sendMessage()
+                    .setChatID(message.getChat())
+                    .setText("Comando non valido")
                     .send();
             return "show_hint";
         });

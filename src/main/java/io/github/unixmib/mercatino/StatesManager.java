@@ -20,6 +20,7 @@ package io.github.unixmib.mercatino;
 import java.util.*;
 import java.util.function.Function;
 
+// TODO This class should probably moved to BotRevolution Library
 public class StatesManager <Supply> {
 
     private Map<String, Function<Supply, String>> states;

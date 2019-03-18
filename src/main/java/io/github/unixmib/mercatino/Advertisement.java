@@ -21,10 +21,12 @@ import com.kowalski7cc.botrevolution.types.User;
 import com.kowalski7cc.botrevolution.types.media.PhotoSize;
 
 import java.util.List;
+import java.util.Optional;
 
 public class Advertisement {
 
     private User owner;
+    private Optional<Integer> publisherOverride;
     private List<PhotoSize> photoSizes;
     private String title;
     private String description;
@@ -46,6 +48,13 @@ public class Advertisement {
 
     public Advertisement setOwner(User owner) {
         this.owner = owner;
+        return this;
+    }
+
+    public Optional<Integer> getPublisherOverride() { return publisherOverride;}
+
+    public Advertisement setPublisherOverride(Optional<Integer> publisherOverride) {
+        this.publisherOverride = publisherOverride;
         return this;
     }
 
