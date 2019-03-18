@@ -25,6 +25,7 @@ import java.util.List;
 public class Advertisement {
 
     private User owner;
+    private int client;
     private List<PhotoSize> photoSizes;
     private String title;
     private String description;
@@ -46,6 +47,13 @@ public class Advertisement {
 
     public Advertisement setOwner(User owner) {
         this.owner = owner;
+        return this;
+    }
+
+    public int getClient() { return client;}
+
+    public Advertisement setClient(int client) {
+        this.client = client;
         return this;
     }
 

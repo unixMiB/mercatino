@@ -68,6 +68,16 @@ public class BotLogic {
             message.getChat().getPrivateChat()
                     .ifPresent(privateChat -> statesManager.store
                             .put("advertisement", new Advertisement(privateChat.toUser())));
+
+            // Check if user is in admin list, then parse parameter and use as Client id in advertisement
+            // fix that get() warning with ifPresent()
+            if (DataStore.getAdmins().contains((long) message.getFrom().get().getId())) {
+                new CommandParser(message).getParameters().ifPresent(s ->
+                        getAdvertisementData(statesManager).setClient(Integer.parseInt(s)));
+            } else {
+                getAdvertisementData(statesManager).setClient(message.getFrom().get().getId());
+            }
+
             telegramBot.sendMessage()
                     .setChatID(message.getChat())
                     .setText("Inviami il titolo della tua inserzione")

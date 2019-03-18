@@ -139,7 +139,9 @@ public class Main {
                                         .setCaption(advertisement.getTitle() + "\n" + advertisement.getDescription())
                                         .setReplyMarkup(new InlineKeyboardBuilder().addRow()
                                                 .buildButton("Invia richiesta")
-                                                .setCallbackData("contact:" + advertisement.getOwner().getId())
+                                                //.setCallbackData("contact:" + advertisement.getOwner().getId())
+                                                // TEST: does int client work as id?
+                                                .setCallbackData("contact:" + advertisement.getClient())
                                                 .build()
                                                 .build().addRow().buildButton("Gruppo unixMiB")
                                                 .setUrl("https://t.me/unixmib").build().build().build())
