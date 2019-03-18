@@ -24,6 +24,7 @@ import com.kowalski7cc.botrevolution.types.chat.Chat;
 import com.kowalski7cc.botrevolution.types.repymarkups.inlinekeyboard.InlineKeyboardBuilder;
 import com.kowalski7cc.botrevolution.utils.decoder.TelegramException;
 
+import javax.xml.crypto.Data;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
@@ -31,9 +32,10 @@ public class Main {
 
     public static void main(String[] args) throws InterruptedException {
         printLicense();
-        DataStore.loadDataStore();
+        DataStore.initialize();
         DataStore.telegramBot.getReceiver().startPolling();
-        DataStore.telegramBot.getMe().ifPresentOrElse(user -> System.out.println("Connected as " + user.getFirstName()),
+        DataStore.telegramBot.getMe()
+                .ifPresentOrElse(user -> System.out.println("Connected as " + user.getFirstName() + " https://t.me/" + user.getUsername().orElse("")),
                 () -> System.exit(1));
         while (DataStore.telegramBot.getReceiver().isPolling()) {
             synchronized (DataStore.telegramBot.getReceiver().getUpdates()) {
@@ -46,7 +48,9 @@ public class Main {
     }
 
     private static void printLicense() {
+        var version = System.getProperties().getProperty("mercatino.version");
         System.out.println("MercatinoBot - unixMiB https://unixmib.github.io/\n" +
+                "Build " + (version==null?"developement":version) + "\n" +
                 "Copyright (C) 2019  Kowalski7cc\n" +
                 "\n" +
                 "This program is free software: you can redistribute it and/or modify\n" +
@@ -70,29 +74,13 @@ public class Main {
         // handle incoming messages
         update.getMessage().ifPresent(message -> message.getChat()
                 .getPrivateChat()
-                .ifPresent(privateChat -> new CommandParser(message).ifPresentOrElse((command, parameters) -> {
-                    switch (command) {
-                        case "start":
-                            getState(privateChat, tg).reset().apply(message);
-                            break;
-                        case "vendi":
-                            getState(privateChat, tg).reset().jumpToState("new_advertisement").apply(message);
-                            break;
-                        case "help":
-                            getState(privateChat, tg).reset().jumpToState("show_hint").apply(message);
-                            break;
-                        case "bacheca":
-                            getState(privateChat, tg).reset().jumpToState("bacheca").apply(message);
-                            break;
-                        case "annulla":
-                            getState(privateChat, tg).reset().jumpToState("abort").apply(message);
-                            break;
-                        default:
-                            tg.sendMessage().setChatID(message.getChat()).setText("Comando non valido").send();
-                            break;
-                    }
-                }, () -> getState(privateChat, tg).apply(message))));
+                .ifPresent(privateChat -> DataStore.commandManager
+                        // TODO Make CommandManager part of BotRevolution Library
+                        .runCommandOrElse(getState(privateChat, tg), message,
+                                () -> getState(privateChat, tg).apply(message))));
 
+
+        // Clean up this garbage
         update.getCallbackQuery().ifPresent(callbackQuery -> callbackQuery.getData()
                 .ifPresent(s -> {
                     var request = s.split(":");
@@ -101,7 +89,7 @@ public class Main {
                             try {
                                 tg.deleteMessage()
                                         .setMessageID(Integer.valueOf(request[1]))
-                                        .setChatID(DataStore.getBoard())
+                                        .setChatID(DataStore.getBoardID())
                                         .send().get();
                             } catch (TelegramException e) {
                                 callbackQuery.getMessage().ifPresent(message -> {
@@ -132,7 +120,7 @@ public class Main {
                                     .apply(message));
                             break;
                         case "publish":
-                            DataStore.getAdvertisementMap().computeIfAbsent(request[1], s1 -> {
+                            DataStore.getAdvertisements().computeIfAbsent(request[1], s1 -> {
                                 tg.answerCallbackQuery()
                                         .setCallbackQueryID(callbackQuery)
                                         .setText("Annuncio non trovato, probabilmente è già stata effettuata la pubblicazione")
@@ -145,9 +133,9 @@ public class Main {
                                                 .send());
                                 return null;
                             });
-                            DataStore.getAdvertisementMap().computeIfPresent(request[1], (s1, advertisement) -> {
+                            DataStore.getAdvertisements().computeIfPresent(request[1], (s1, advertisement) -> {
                                 var msg = tg.sendPhoto()
-                                        .setChatID(DataStore.getBoard())
+                                        .setChatID(DataStore.getBoardID())
                                         .setPhoto(advertisement.getPhotoSizes().get(0).getFileID())
                                         .setCaption(advertisement.getTitle() + "\n" + advertisement.getDescription())
                                         .setReplyMarkup(new InlineKeyboardBuilder().addRow()
@@ -184,7 +172,7 @@ public class Main {
                             });
                             break;
                         case "delete":
-                            DataStore.getAdvertisementMap().computeIfAbsent(request[1], s1 -> {
+                            DataStore.getAdvertisements().computeIfAbsent(request[1], s1 -> {
                                 try {
                                     tg.answerCallbackQuery()
                                             .setCallbackQueryID(callbackQuery)
@@ -200,7 +188,7 @@ public class Main {
                                     return null;
                                 }
                             });
-                            DataStore.getAdvertisementMap().computeIfPresent(request[1], (s1, advertisement) -> {
+                            DataStore.getAdvertisements().computeIfPresent(request[1], (s1, advertisement) -> {
                                 tg.answerCallbackQuery()
                                         .setCallbackQueryID(callbackQuery)
                                         .setText("Annuncio cancellato")
@@ -267,7 +255,7 @@ public class Main {
 
     private static StatesManager<Message> getState(Chat chat, TelegramBot telegramBot) {
         return DataStore.getChats().compute(chat, (chat1, statesManager) -> Optional.ofNullable(statesManager)
-                .orElse(BotLogic.load(new StatesManager<>(), telegramBot)));
+                .orElse(BotLogic.loadFSM(new StatesManager<>(), telegramBot)));
     }
 
 }

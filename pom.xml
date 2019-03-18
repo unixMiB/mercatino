@@ -59,8 +59,29 @@
     </properties>
 
     <build>
-        <finalName>${project.artifactId}-${project.version}</finalName>
+        <finalName>${project.artifactId}</finalName>
         <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>properties-maven-plugin</artifactId>
+                <version>1.0.0</version>
+                <executions>
+                    <execution>
+                        <phase>initialize</phase>
+                        <goals>
+                            <goal>set-system-properties</goal>
+                        </goals>
+                        <configuration>
+                            <properties>
+                                <property>
+                                    <name>mercatino.version</name>
+                                    <value>${project.version}</value>
+                                </property>
+                            </properties>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.8.0</version>
@@ -137,6 +158,7 @@
                 <artifactId>maven-assembly-plugin</artifactId>
                 <executions>
                     <execution>
+                        <id>generic</id>
                         <phase>package</phase>
                         <goals>
                             <goal>single</goal>
@@ -169,7 +191,7 @@
         <dependency>
             <groupId>com.xspacesoft.kowalski7cc</groupId>
             <artifactId>BotRevolution</artifactId>
-            <version>5.0b-Snapshot</version>
+            <version>5.0c-Snapshot</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
