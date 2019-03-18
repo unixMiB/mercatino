@@ -23,7 +23,6 @@ import com.kowalski7cc.botrevolution.types.repymarkups.inlinekeyboard.InlineKeyb
 import com.kowalski7cc.botrevolution.types.repymarkups.replykeyboards.ReplyKeyboardBuilder;
 import com.kowalski7cc.botrevolution.types.repymarkups.replykeyboards.ReplyKeyboardRemove;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;

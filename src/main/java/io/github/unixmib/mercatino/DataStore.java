@@ -95,9 +95,11 @@ public class DataStore {
         adminsGroup = Optional.ofNullable(System.getenv(ParameterKey.ADMINS_GROUP.getEnv()));
     }
 
+    /*
     private static void loadConfigFromArument(Optional<String> argument) throws NullPointerException {
         argument.map(s -> s.split(" ")).orElseThrow(() -> new NullPointerException());
     }
+    */
 
     public static Map<Chat, StatesManager<Message>> getChats() {
         return chats;
@@ -111,7 +113,7 @@ public class DataStore {
         admins.add(id);
     }
 
-    public static void removeAdmin(Long id) {
+    public static void removeAdmin(Integer id) {
         admins.remove(id);
     }
 

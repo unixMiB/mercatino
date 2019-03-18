@@ -48,13 +48,13 @@ public class CommandManager {
         return this;
     }
 
-    public void runCommand(StatesManager statesManager, Message message) {
+    public void runCommand(StatesManager<Message> statesManager, Message message) {
         new CommandParser(message).ifPresent((command, parameters) -> statesManager.reset()
                 .jumpToState(commands.getOrDefault(command, errorState))
                 .apply(message));
     }
 
-    public void runCommandOrElse(StatesManager statesManager, Message message, Runnable runnable) {
+    public void runCommandOrElse(StatesManager<Message> statesManager, Message message, Runnable runnable) {
         new CommandParser(message).ifPresentOrElse((command, parameters) -> statesManager.reset()
                 .jumpToState(command)
                 .apply(message), runnable);

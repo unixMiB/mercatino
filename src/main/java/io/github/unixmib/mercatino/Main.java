@@ -24,7 +24,6 @@ import com.kowalski7cc.botrevolution.types.chat.Chat;
 import com.kowalski7cc.botrevolution.types.repymarkups.inlinekeyboard.InlineKeyboardBuilder;
 import com.kowalski7cc.botrevolution.utils.decoder.TelegramException;
 
-import javax.xml.crypto.Data;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
