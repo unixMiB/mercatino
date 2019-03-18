@@ -42,7 +42,9 @@ public class Main {
             }
 
             while (!DataStore.telegramBot.getUpdates().isEmpty())
-                CompletableFuture.runAsync(() -> apply(DataStore.telegramBot.getUpdates().poll(), DataStore.telegramBot)).join();
+                CompletableFuture.runAsync(() -> apply(DataStore.telegramBot.getUpdates()
+                        .poll(), DataStore.telegramBot))
+                        .join();
         }
     }
 
@@ -85,6 +87,7 @@ public class Main {
                     var request = s.split(":");
                     switch (request[0]) {
                         case "delmsg": {
+                            // Allow users to delete published post
                             try {
                                 tg.deleteMessage()
                                         .setMessageID(Integer.valueOf(request[1]))
@@ -109,6 +112,8 @@ public class Main {
                             }
                         }
                         break;
+
+
                         case "new_advertisement":
                             tg.answerCallbackQuery()
                                     .setCallbackQueryID(callbackQuery)
@@ -118,7 +123,10 @@ public class Main {
                                     jumpToState("new_advertisement")
                                     .apply(message));
                             break;
+
+
                         case "publish":
+                            // Send notification to moderator if post not found
                             DataStore.getAdvertisements().computeIfAbsent(request[1], s1 -> {
                                 tg.answerCallbackQuery()
                                         .setCallbackQueryID(callbackQuery)
@@ -132,6 +140,8 @@ public class Main {
                                                 .send());
                                 return null;
                             });
+
+                            // Publish post on channel, get message id, send confirmation with callback id
                             DataStore.getAdvertisements().computeIfPresent(request[1], (s1, advertisement) -> {
                                 var msg = tg.sendPhoto()
                                         .setChatID(DataStore.getBoardID())
@@ -139,13 +149,15 @@ public class Main {
                                         .setCaption(advertisement.getTitle() + "\n" + advertisement.getDescription())
                                         .setReplyMarkup(new InlineKeyboardBuilder().addRow()
                                                 .buildButton("Invia richiesta")
-                                                //.setCallbackData("contact:" + advertisement.getOwner().getId())
                                                 // TEST: does int client work as id?
-                                                .setCallbackData("contact:" + advertisement.getClient())
+                                                .setCallbackData("contact:" + advertisement.getPublisherOverride()
+                                                        .orElse(advertisement.getOwner().getId()))
                                                 .build()
                                                 .build().addRow().buildButton("Gruppo unixMiB")
                                                 .setUrl("https://t.me/unixmib").build().build().build())
                                         .send();
+
+                                // Send confirmation to user
                                 msg.ifPresent(message -> tg.sendMessage().setText("Il tuo annuncio \"" + advertisement.getTitle()
                                         + "\" è stato pubblicato")
                                         .setChatID(Long.valueOf(advertisement.getOwner().getId()))
@@ -154,10 +166,14 @@ public class Main {
                                                 .setCallbackData("delmsg:" + message.getMessageID())
                                                 .build()
                                                 .build().build()).send());
+
+                                // Delete moderation message
                                 callbackQuery.getMessage().ifPresent(message -> tg.deleteMessage()
                                         .setChatID(message.getChat())
                                         .setMessageID(message)
                                         .send());
+
+                                // Answer to callback
                                 try {
                                     tg.answerCallbackQuery()
                                             .setCallbackQueryID(callbackQuery)
@@ -166,12 +182,14 @@ public class Main {
                                             .send();
                                 } catch (TelegramException e) {
                                     // Query timed out
-                                    System.out.println("QueryManager: " + e.toString() + ", Query ID: " +
+                                    System.out.println("TIMEOUT QueryManager: " + e.toString() + ", Query ID: " +
                                             callbackQuery.getId());
                                 }
                                 return null;
                             });
                             break;
+
+
                         case "delete":
                             DataStore.getAdvertisements().computeIfAbsent(request[1], s1 -> {
                                 try {
@@ -202,9 +220,13 @@ public class Main {
                                 return null;
                             });
                             break;
+
+
                         case "contact":
+                            // Send a message to post publisher, if user doesn't have an username, fail with notification.
                             callbackQuery.getFrom().getUsername().ifPresentOrElse(s1 -> {
                                 try {
+                                    // Send a message to publisher with user ID in the button
                                     tg.sendMessage()
                                             .setChatID(request[1])
                                             .setText("Ciao, hai avuto una richiesta da " + callbackQuery.getFrom()
@@ -215,6 +237,8 @@ public class Main {
                                                     .build()
                                                     .build().build())
                                             .send();
+
+                                    // Notify user on successful poke
                                     tg.answerCallbackQuery()
                                             .setCallbackQueryID(callbackQuery)
                                             .setText("Richiesta inviata!")
@@ -222,6 +246,7 @@ public class Main {
                                             .setCacheTime(10)
                                             .send();
                                 } catch (Exception e) {
+                                    // If user blocked the bot, notify user
                                     try {
                                         tg.answerCallbackQuery()
                                                 .setCallbackQueryID(callbackQuery)
@@ -242,6 +267,8 @@ public class Main {
                                     .send());
 
                             break;
+
+
                         default:
                             tg.answerCallbackQuery()
                                     .setCallbackQueryID(callbackQuery)

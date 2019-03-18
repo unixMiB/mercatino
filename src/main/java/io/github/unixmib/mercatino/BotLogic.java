@@ -23,9 +23,10 @@ import com.kowalski7cc.botrevolution.types.repymarkups.inlinekeyboard.InlineKeyb
 import com.kowalski7cc.botrevolution.types.repymarkups.replykeyboards.ReplyKeyboardBuilder;
 import com.kowalski7cc.botrevolution.types.repymarkups.replykeyboards.ReplyKeyboardRemove;
 
-import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
+
+import static java.util.Optional.*;
 
 public class BotLogic {
 
@@ -69,14 +70,14 @@ public class BotLogic {
                     .ifPresent(privateChat -> statesManager.store
                             .put("advertisement", new Advertisement(privateChat.toUser())));
 
-            // Check if user is in admin list, then parse parameter and use as Client id in advertisement
-            // fix that get() warning with ifPresent()
-            if (DataStore.getAdmins().contains((long) message.getFrom().get().getId())) {
-                new CommandParser(message).getParameters().ifPresent(s ->
-                        getAdvertisementData(statesManager).setClient(Integer.parseInt(s)));
-            } else {
-                getAdvertisementData(statesManager).setClient(message.getFrom().get().getId());
-            }
+            // Check if message contains publish id override command and user is admin, then set it if true
+            message.getFrom().ifPresent(user -> DataStore.getAdmins()
+                    .stream()
+                    .filter(user.getId()::equals)
+                    .findFirst()
+                    .ifPresentOrElse(integer -> new CommandParser(message).getParameters().ifPresent(s ->
+                            getAdvertisementData(statesManager).setPublisherOverride(of(Integer.parseInt(s)))),
+                            () -> getAdvertisementData(statesManager).setPublisherOverride(empty())));
 
             telegramBot.sendMessage()
                     .setChatID(message.getChat())
@@ -155,7 +156,7 @@ public class BotLogic {
 
 
         statesManager.newState("read_publish", message -> message.getText()
-                .map(s -> Optional.of(s)
+                .map(s -> of(s)
                         .filter(s1 -> s1.equals("Pubblica"))
                         .map(s1 -> {
                             var adv = getAdvertisementData(statesManager);
@@ -188,7 +189,7 @@ public class BotLogic {
                                     .send();
                             return "show_hint";
                         })
-                        .or(() -> Optional.of(s).filter(s1 -> s1.equals("Annulla")).map(s1 -> {
+                        .or(() -> of(s).filter(s1 -> s1.equals("Annulla")).map(s1 -> {
                             telegramBot.sendMessage()
                                     .setChatID(message.getChat())
                                     .setText("Pubblicazione annullata")
