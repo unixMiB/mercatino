@@ -56,7 +56,7 @@ public class CommandManager {
 
     public void runCommandOrElse(StatesManager<Message> statesManager, Message message, Runnable runnable) {
         new CommandParser(message).ifPresentOrElse((command, parameters) -> statesManager.reset()
-                .jumpToState(command)
+                .jumpToState(commands.getOrDefault(command, errorState))
                 .apply(message), runnable);
     }
 

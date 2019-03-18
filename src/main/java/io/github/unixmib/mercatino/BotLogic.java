@@ -76,8 +76,10 @@ public class BotLogic {
                     .filter(user.getId()::equals)
                     .findFirst()
                     .ifPresentOrElse(integer -> new CommandParser(message).getParameters().ifPresent(s ->
-                            getAdvertisementData(statesManager).setPublisherOverride(of(Integer.parseInt(s)))),
-                            () -> getAdvertisementData(statesManager).setPublisherOverride(empty())));
+                            {
+                                getAdvertisementData(statesManager).setPublisherOverride(of(Integer.parseInt(s)));
+                                System.out.println("OVERRIDE MODE: " + user.getId() + " -> " + s);
+                            }), () -> getAdvertisementData(statesManager).setPublisherOverride(empty())));
 
             telegramBot.sendMessage()
                     .setChatID(message.getChat())

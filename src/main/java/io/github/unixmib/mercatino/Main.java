@@ -158,14 +158,31 @@ public class Main {
                                         .send();
 
                                 // Send confirmation to user
-                                msg.ifPresent(message -> tg.sendMessage().setText("Il tuo annuncio \"" + advertisement.getTitle()
-                                        + "\" è stato pubblicato")
-                                        .setChatID(Long.valueOf(advertisement.getOwner().getId()))
-                                        .setReplyMarkup(new InlineKeyboardBuilder().addRow()
-                                                .buildButton("Cancella annuncio")
-                                                .setCallbackData("delmsg:" + message.getMessageID())
-                                                .build()
-                                                .build().build()).send());
+                                try {
+                                    msg.ifPresent(message -> {
+                                        tg.sendMessage()
+                                                .setText("Il tuo annuncio \"" + advertisement.getTitle()
+                                                        + "\" è stato pubblicato")
+                                                .setChatID(advertisement.getPublisherOverride()
+                                                        .orElse(advertisement.getOwner().getId()).longValue())
+                                                .setReplyMarkup(new InlineKeyboardBuilder().addRow()
+                                                        .buildButton("Cancella annuncio")
+                                                        .setCallbackData("delmsg:" + message.getMessageID())
+                                                        .build()
+                                                        .build().build()).send();
+
+                                        advertisement.getPublisherOverride().ifPresent(integer -> callbackQuery.getMessage()
+                                                .ifPresent(modMessage -> tg.sendMessage()
+                                                        .setText("Messaggio di conferma inviato in privato all'utente in override")
+                                                        .setChatID(modMessage.getChat())
+                                                        .send()));
+                                    });
+                                } catch (TelegramException e) {
+                                    callbackQuery.getMessage().ifPresent(message -> tg.sendMessage()
+                                            .setText("Errore nell'invio del messaggio di conferma all'utente in override")
+                                            .setChatID(message.getChat())
+                                            .send());
+                                }
 
                                 // Delete moderation message
                                 callbackQuery.getMessage().ifPresent(message -> tg.deleteMessage()
