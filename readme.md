@@ -63,22 +63,13 @@ java -jar mercatino.jar -t token -b id -a 123456:123456:123456 -g id
 
 ## Docker container tags
 
--  `190304`, `190304-alpine`, `alpine`, `latest` (190304/alpine)
+-  `190318`, `190318-slim`, `slim` (190318/slim)
 
--  `190304-windowsservercore`, `190304-windowsservercore-ltsc2019`, `windowsservercore`, `windowsservercore-ltsc2019` (190304/windows/servercore/ltsc2019)
-
--  `190303`, `190303-alpine` (190303/alpine)
-
--  `190303-windowsservercore`, `190303-windowsservercore-ltsc2019` (190303/windows/servercore/ltsc2019)
-
--  `190228`, `190228-alpine` (190228/alpine)
-
--  `190228-windowsservercore`, `190228-windowsservercore-ltsc2019` (199228/windows/servercore/ltsc2019)
-
--  `190223`, `190223-stretch`, `stretch` (190223/stretch)
-
--  `190223-windowsservercore`, `190223-windowsservercore-ltsc2019` (190223/windows/servercore/ltsc2019)
+-  `190318-windowsservercore-1809`, `windowsservercore-1809` (190318/windows/servercore/1809)
 
 ### Shared tags
 
 - `latest`
+- `190318`
+  - Debian Strech Slim
+  - Windows Server Core 1809
