@@ -37,7 +37,7 @@ Per iniziare una chat con il bot recati alla pagina [https://t.me/unixmib_mercat
 
 Configurazione consigliata con un container Docker
 
-- `MERCATUNO_TOKEN` = "Token del bot"
+- `MERCATINO_TOKEN` = "Token del bot"
 - `MERCATINO_BOARD` = "ID del canale usato come bacheca"
 - `MERCATINO_ADMINS` = 123456:123456:123456
 - `MERCATINO_GROUP` = "ID del gruppo di amministratori"
