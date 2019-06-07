@@ -63,7 +63,7 @@ java -jar mercatino.jar -t token -b id -a 123456:123456:123456 -g id
 
 ## Docker container tags
 
--  `190318`, `190318-slim`, `slim` (190318/slim)
+-  `190318-slim`, `slim` (190318/slim)
 
 -  `190318-windowsservercore-1809`, `windowsservercore-1809` (190318/windows/servercore/1809)
 
