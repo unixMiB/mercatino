@@ -130,7 +130,7 @@ public class Main {
                             DataStore.getAdvertisements().computeIfAbsent(request[1], s1 -> {
                                 tg.answerCallbackQuery()
                                         .setCallbackQueryID(callbackQuery)
-                                        .setText("Annuncio non trovato, probabilmente è già stata effettuata la pubblicazione")
+                                        .setText("Annuncio non trovato, probabilmente è già stata effettuata la pubblicazione o la rimozione")
                                         .setCacheTime(1)
                                         .send();
                                 callbackQuery.getMessage()
@@ -212,7 +212,7 @@ public class Main {
                                 try {
                                     tg.answerCallbackQuery()
                                             .setCallbackQueryID(callbackQuery)
-                                            .setText("Annuncio non trovato, probabilmente è già stata effettuata la pubblicazione")
+                                            .setText("Annuncio non trovato, probabilmente è già stata effettuata la pubblicazione o la rimozione")
                                             .setCacheTime(1)
                                             .send();
                                     callbackQuery.getMessage()
